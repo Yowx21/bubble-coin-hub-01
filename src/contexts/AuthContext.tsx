@@ -7,6 +7,15 @@ import { Database } from '@/integrations/supabase/types';
 
 type UserProfile = Database['public']['Tables']['profiles']['Row'];
 
+// Define our own wallet type since it's not in the generated types yet
+interface Wallet {
+  user_id: string;
+  balance: number;
+  last_reward_claim?: string | null;
+  level?: number;
+  updated_at?: string;
+}
+
 interface AuthUser {
   id: string;
   email?: string;
@@ -52,17 +61,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) throw profileError;
 
-      // Fetch wallet data using a direct SELECT query
-      const { data: walletData, error: walletError } = await supabase
-        .from('wallets')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (walletError) {
-        // If the wallet doesn't exist yet, create one
-        if (walletError.code === 'PGRST116') {
-          // Create a new wallet for the user
+      // Fetch wallet data - use any to bypass TypeScript errors until types are updated
+      let walletData: Wallet | null = null;
+      
+      try {
+        // Try to fetch existing wallet
+        const { data, error } = await supabase
+          .from('wallets')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        
+        if (!error) {
+          walletData = data as Wallet;
+        } else if (error.code === 'PGRST116') {
+          // Wallet doesn't exist yet, create one
           const { error: createWalletError } = await supabase.rpc('update_user_balance', {
             target_user_id: userId,
             amount_change: 100 // Initial balance
@@ -78,10 +91,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
             
           if (newWalletError) throw newWalletError;
-          walletData = newWallet;
+          walletData = newWallet as Wallet;
         } else {
-          throw walletError;
+          throw error;
         }
+      } catch (walletError) {
+        console.error('Wallet fetch error:', walletError);
+        logToDiscord(`Error fetching wallet: ${JSON.stringify(walletError)}`, 'error');
+        // Continue with null wallet data - we'll use defaults
       }
 
       // Get user email

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Layout/Header';
@@ -9,12 +8,18 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 
+// Define interfaces to handle types properly
 interface UserItem {
   id: string;
   username: string;
   is_admin: boolean;
   is_owner: boolean;
   email: string;
+  balance: number;
+}
+
+interface WalletData {
+  user_id: string;
   balance: number;
 }
 
@@ -57,12 +62,19 @@ const Admin = () => {
         const { data: authData } = await supabase.auth.admin.listUsers();
         const usersData = authData?.users || [];
         
-        // Get wallet balances
-        const { data: walletsData, error: walletsError } = await supabase
-          .from('wallets')
-          .select('user_id, balance');
-          
-        if (walletsError) throw walletsError;
+        // Get wallet balances - use type assertion for now
+        let walletsData: WalletData[] = [];
+        try {
+          const { data, error } = await supabase
+            .from('wallets')
+            .select('user_id, balance');
+            
+          if (!error && data) {
+            walletsData = data as WalletData[];
+          }
+        } catch (error) {
+          console.error('Error fetching wallets:', error);
+        }
           
         // Combine the data
         const formattedUsers = profilesData.map(profile => {

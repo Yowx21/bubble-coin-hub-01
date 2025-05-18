@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Layout/Header';
@@ -6,45 +5,44 @@ import Dashboard from '../components/Dashboard/Dashboard';
 import AuthModal from '../components/Auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
-
 interface IndexProps {
   activeTab?: 'rewards' | 'spin' | 'shop' | 'afk';
 }
-
-const Index = ({ activeTab: initialTab }: IndexProps) => {
-  const { user } = useAuth();
+const Index = ({
+  activeTab: initialTab
+}: IndexProps) => {
+  const {
+    user
+  } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'rewards' | 'spin' | 'shop' | 'afk'>(initialTab || 'rewards');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authType, setAuthType] = useState<'login' | 'signup'>('signup');
-  
+
   // Reference to create bubbles
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Create bubbles on click
   const createBubbles = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
-    
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
-    
+
     // Create 5 bubbles at random positions around the click
     for (let i = 0; i < 5; i++) {
       const size = Math.random() * 30 + 10; // Random size between 10-40px
       const offsetX = (Math.random() - 0.5) * 20;
       const offsetY = (Math.random() - 0.5) * 20;
-      
       const bubble = document.createElement('div');
       bubble.className = 'bubble animate-bubble-up';
       bubble.style.width = `${size}px`;
       bubble.style.height = `${size}px`;
       bubble.style.left = `${x + offsetX}px`;
       bubble.style.top = `${y + offsetY}px`;
-      
       container.appendChild(bubble);
-      
+
       // Remove bubble after animation ends
       setTimeout(() => {
         if (container.contains(bubble)) {
@@ -53,7 +51,7 @@ const Index = ({ activeTab: initialTab }: IndexProps) => {
       }, 2000);
     }
   };
-  
+
   // Simulated loading state for the hero
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -62,56 +60,46 @@ const Index = ({ activeTab: initialTab }: IndexProps) => {
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
-  
+
   // If user is logged in and there's a hash in the URL, show the appropriate tab
   useEffect(() => {
     if (user && initialTab) {
       setActiveTab(initialTab);
     }
   }, [user, initialTab]);
-
   const handleGetStarted = () => {
     setAuthType('signup');
     setShowAuthModal(true);
   };
-
   const handleLogin = () => {
     setAuthType('login');
     setShowAuthModal(true);
   };
-
   const closeAuthModal = () => {
     setShowAuthModal(false);
   };
-  
-  return (
-    <div 
-      className="min-h-screen bg-spdm-black text-white overflow-hidden"
-      ref={containerRef}
-      onClick={createBubbles}
-    >
+  return <div className="min-h-screen bg-spdm-black text-white overflow-hidden" ref={containerRef} onClick={createBubbles}>
       <Header onLoginClick={handleLogin} onSignupClick={handleGetStarted} />
       
       {/* Gradient overlay for visual effect */}
       <div className="fixed inset-0 bg-gradient-to-b from-spdm-green/5 to-transparent pointer-events-none"></div>
       
-      {user ? (
-        <div className="pt-24 pb-20">
+      {user ? <div className="pt-24 pb-20">
           <Dashboard activeTab={activeTab} />
-        </div>
-      ) : (
-        <div className="relative">
+        </div> : <div className="relative">
           {/* Hero Section */}
           <div className="min-h-screen flex items-center justify-center px-4 relative">
             <div className="absolute inset-0 overflow-hidden">
               <div className="absolute w-96 h-96 bg-spdm-green/20 rounded-full blur-3xl -top-20 -left-20 animate-float opacity-30"></div>
-              <div className="absolute w-64 h-64 bg-spdm-green/20 rounded-full blur-3xl bottom-20 right-10 animate-float opacity-20" style={{ animationDelay: '1s' }}></div>
+              <div className="absolute w-64 h-64 bg-spdm-green/20 rounded-full blur-3xl bottom-20 right-10 animate-float opacity-20" style={{
+            animationDelay: '1s'
+          }}></div>
             </div>
             
             <div className="max-w-4xl w-full text-center relative z-10">
               <div className={`transition-all duration-700 ${loading ? 'opacity-0 translate-y-10' : 'opacity-100 translate-y-0'}`}>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 glow-text">
-                  <span className="text-spdm-green">SPDM</span> Team
+                  <span className="text-spdm-green">YOWX</span> Team
                 </h1>
                 
                 <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
@@ -119,38 +107,27 @@ const Index = ({ activeTab: initialTab }: IndexProps) => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-                  <motion.button 
-                    onClick={handleGetStarted}
-                    className="px-8 py-4 rounded-full bg-spdm-green hover:bg-spdm-darkGreen text-black font-semibold text-lg transition-all hover:shadow-lg hover:shadow-spdm-green/20"
-                    whileTap={{ scale: 0.95 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
+                  <motion.button onClick={handleGetStarted} className="px-8 py-4 rounded-full bg-spdm-green hover:bg-spdm-darkGreen text-black font-semibold text-lg transition-all hover:shadow-lg hover:shadow-spdm-green/20" whileTap={{
+                scale: 0.95
+              }} whileHover={{
+                scale: 1.05
+              }}>
                     Get Started
                   </motion.button>
                   
-                  <motion.button
-                    onClick={() => window.open('https://discord.gg/aJaKPWr42x', '_blank')}
-                    className="px-8 py-4 rounded-full bg-transparent hover:bg-spdm-green/10 border-2 border-spdm-green text-spdm-green font-semibold text-lg transition-all"
-                    whileTap={{ scale: 0.95 }}
-                    whileHover={{ scale: 1.05 }}
-                  >
+                  <motion.button onClick={() => window.open('https://discord.gg/aJaKPWr42x', '_blank')} className="px-8 py-4 rounded-full bg-transparent hover:bg-spdm-green/10 border-2 border-spdm-green text-spdm-green font-semibold text-lg transition-all" whileTap={{
+                scale: 0.95
+              }} whileHover={{
+                scale: 1.05
+              }}>
                     Join Discord
                   </motion.button>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                  <FeatureCard 
-                    title="Free Daily Coins" 
-                    description="Complete simple tasks to earn coins every day" 
-                  />
-                  <FeatureCard 
-                    title="Spin & Win" 
-                    description="Spin the wheel for a chance to win up to 100 coins" 
-                  />
-                  <FeatureCard 
-                    title="AFK Farming" 
-                    description="Earn passive coins just by keeping the page open" 
-                  />
+                  <FeatureCard title="Free Daily Coins" description="Complete simple tasks to earn coins every day" />
+                  <FeatureCard title="Spin & Win" description="Spin the wheel for a chance to win up to 100 coins" />
+                  <FeatureCard title="AFK Farming" description="Earn passive coins just by keeping the page open" />
                 </div>
               </div>
             </div>
@@ -225,49 +202,42 @@ const Index = ({ activeTab: initialTab }: IndexProps) => {
                 Create an account today and start earning coins
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <motion.button 
-                  onClick={handleGetStarted}
-                  className="px-8 py-4 rounded-full bg-spdm-green hover:bg-spdm-darkGreen text-black font-semibold text-lg transition-all hover:shadow-lg hover:shadow-spdm-green/20"
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.05 }}
-                >
+                <motion.button onClick={handleGetStarted} className="px-8 py-4 rounded-full bg-spdm-green hover:bg-spdm-darkGreen text-black font-semibold text-lg transition-all hover:shadow-lg hover:shadow-spdm-green/20" whileTap={{
+              scale: 0.95
+            }} whileHover={{
+              scale: 1.05
+            }}>
                   Sign Up Now
                 </motion.button>
-                <motion.button
-                  onClick={() => window.open('https://chat.whatsapp.com/KteLnsPOMEKIJw3I1phViP', '_blank')}
-                  className="px-8 py-4 rounded-full bg-transparent hover:bg-spdm-green/10 border-2 border-spdm-green text-spdm-green font-semibold text-lg transition-all"
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ scale: 1.05 }}
-                >
+                <motion.button onClick={() => window.open('https://chat.whatsapp.com/KteLnsPOMEKIJw3I1phViP', '_blank')} className="px-8 py-4 rounded-full bg-transparent hover:bg-spdm-green/10 border-2 border-spdm-green text-spdm-green font-semibold text-lg transition-all" whileTap={{
+              scale: 0.95
+            }} whileHover={{
+              scale: 1.05
+            }}>
                   Join WhatsApp
                 </motion.button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </div>}
       
-      {showAuthModal && (
-        <AuthModal 
-          isOpen={showAuthModal} 
-          onClose={closeAuthModal} 
-          type={authType} 
-        />
-      )}
-    </div>
-  );
+      {showAuthModal && <AuthModal isOpen={showAuthModal} onClose={closeAuthModal} type={authType} />}
+    </div>;
 };
 
 // Feature card component
-const FeatureCard = ({ title, description }: { title: string; description: string }) => (
-  <motion.div 
-    className="bg-spdm-dark bg-opacity-80 backdrop-blur-sm p-6 rounded-lg border border-spdm-green/20 hover:border-spdm-green/50 transition-all"
-    whileHover={{ scale: 1.03 }}
-    whileTap={{ scale: 0.98 }}
-  >
+const FeatureCard = ({
+  title,
+  description
+}: {
+  title: string;
+  description: string;
+}) => <motion.div className="bg-spdm-dark bg-opacity-80 backdrop-blur-sm p-6 rounded-lg border border-spdm-green/20 hover:border-spdm-green/50 transition-all" whileHover={{
+  scale: 1.03
+}} whileTap={{
+  scale: 0.98
+}}>
     <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
     <p className="text-gray-400">{description}</p>
-  </motion.div>
-);
-
+  </motion.div>;
 export default Index;

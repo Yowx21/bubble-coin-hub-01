@@ -250,7 +250,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_active_user_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+        }[]
+      }
+      get_user_emails: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+        }[]
+      }
+      insert_or_update_user_presence: {
+        Args: { p_user_id: string; p_status: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

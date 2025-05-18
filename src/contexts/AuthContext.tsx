@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (walletError) throw walletError;
 
       const profile = profileData as UserProfile;
-      const wallet = walletData as Wallet;
+      const wallet = walletData as unknown as Wallet; // Cast to unknown first to bypass type check
 
       // Convert string date to Date object if needed
       const lastRewardClaim = wallet.last_reward_claim 
@@ -142,23 +142,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       // Use RPC function instead of direct table access
-      const { error } = await supabase.rpc('update_user_presence', {
-        user_id: user.id,
-        status_value: 'online'
+      const { error } = await supabase.rpc('insert_or_update_user_presence', {
+        p_user_id: user.id,
+        p_status: 'online'
       });
 
       if (error) {
         console.error('Error updating user presence with RPC:', error);
-        
-        // Fallback approach using raw SQL
-        const { error: sqlError } = await supabase.rpc('insert_or_update_user_presence', {
-          p_user_id: user.id,
-          p_status: 'online'
-        });
-        
-        if (sqlError) {
-          console.error('Fallback presence update failed:', sqlError);
-        }
       }
       
       // Broadcast presence update to all clients

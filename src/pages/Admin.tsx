@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Layout/Header';
@@ -67,8 +66,8 @@ const Admin = () => {
           
         // Combine the data
         const formattedUsers = profilesData.map(profile => {
-          const userEmail = usersData.find((u: any) => u.id === profile.id)?.email || '';
-          const userBalance = walletsData.find(w => w.user_id === profile.id)?.balance || 0;
+          const userEmail = usersData?.find((u: any) => u.id === profile.id)?.email || '';
+          const userBalance = walletsData?.find(w => w.user_id === profile.id)?.balance || 0;
           
           return {
             id: profile.id,

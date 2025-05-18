@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) throw profileError;
 
-      // Fetch wallet data - use any to bypass TypeScript errors until types are updated
+      // Fetch wallet data - use any to bypass TypeScript errors since the types are not updated yet
       let walletData: Wallet | null = null;
       
       try {
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
         
         if (!error) {
-          // Explicitly cast the data to Wallet type
+          // Explicitly cast the data to Wallet type with double type assertion
           walletData = data as unknown as Wallet;
         } else if (error.code === 'PGRST116') {
           // Wallet doesn't exist yet, create one
@@ -287,18 +287,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const intAmount = Math.round(amount);
 
     try {
-      const { error } = await supabase.rpc('update_user_balance', {
+      // Using the balance update RPC function
+      const { data, error } = await supabase.rpc('update_user_balance', {
         target_user_id: user.id,
         amount_change: intAmount
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in updateUserCoins:', error);
+        logToDiscord(`Error updating balance via RPC: ${error.message}`, 'error');
+        throw error;
+      }
 
-      // Update local user state
-      setUser(prev => prev ? {
-        ...prev,
-        coins: prev.coins + intAmount
-      } : null);
+      // After successful update, refresh the wallet data
+      const { data: updatedWallet, error: walletError } = await supabase
+        .from('wallets' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (walletError) {
+        console.error('Error fetching updated wallet:', walletError);
+        logToDiscord(`Error fetching updated wallet: ${walletError.message}`, 'error');
+        
+        // Still update local state even if we can't fetch latest from DB
+        setUser(prev => prev ? {
+          ...prev,
+          coins: prev.coins + intAmount
+        } : null);
+      } else {
+        // Update local user state with the freshly fetched wallet data
+        const wallet = updatedWallet as unknown as Wallet;
+        setUser(prev => prev ? {
+          ...prev,
+          coins: wallet.balance,
+          level: wallet.level || prev.level
+        } : null);
+      }
 
       logToDiscord(`User ${user.username} coins updated: ${intAmount > 0 ? '+' : ''}${intAmount} coins`, 'info');
     } catch (error: any) {

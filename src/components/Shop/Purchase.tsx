@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCoins } from '@/hooks/useCoins';
 import { useToast } from '@/hooks/use-toast';
+import { supabase, logToDiscord } from '@/integrations/supabase/client';
 
 interface ShopItem {
   id: string;
@@ -57,8 +58,11 @@ const Purchase = ({ item, onClose }: PurchaseProps) => {
         const generatedKey = generateRandomKey();
         setKeyGenerated(generatedKey);
         
+        // Log the purchase
+        logToDiscord(`User purchased ${item.name} (${item.duration}) for ${item.price} coins. Phone: ${data.phoneNumber}. Key: ${generatedKey}`, 'info');
+        
         // Send webhook
-        sendWebhook(data.phoneNumber, item, generatedKey);
+        await sendWebhook(data.phoneNumber, item, generatedKey);
         
         toast({
           title: "Purchase successful!",
@@ -71,6 +75,7 @@ const Purchase = ({ item, onClose }: PurchaseProps) => {
         description: "An error occurred while processing your purchase",
         variant: "destructive",
       });
+      console.error("Purchase error:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -91,48 +96,52 @@ const Purchase = ({ item, onClose }: PurchaseProps) => {
     return key;
   };
   
-  const sendWebhook = (phoneNumber: string, item: ShopItem, key: string) => {
-    // In a real application, you would make an API call to send the webhook
-    console.log(`Webhook: User purchased ${item.name} with phone number ${phoneNumber}. Key: ${key}`);
-    
-    // Mockup of webhook data that would be sent
-    const webhookData = {
-      webhook_id: "1367344767188336641",
-      content: `New Purchase: ${item.name}`,
-      embeds: [
-        {
-          title: "Purchase Details",
-          fields: [
-            {
-              name: "Item",
-              value: item.name,
-              inline: true
-            },
-            {
-              name: "Duration",
-              value: item.duration,
-              inline: true
-            },
-            {
-              name: "Price",
-              value: `${item.price} coins`,
-              inline: true
-            },
-            {
-              name: "Phone Number",
-              value: phoneNumber
-            },
-            {
-              name: "Generated Key",
-              value: key
-            }
-          ],
-          color: 3066993
-        }
-      ]
-    };
-    
-    // This is just a mockup, in a real app you'd make an actual fetch call to the webhook URL
+  const sendWebhook = async (phoneNumber: string, item: ShopItem, key: string) => {
+    try {
+      // Use the Discord webhook URL from the client
+      const webhookData = {
+        username: "Yowx Shop Bot",
+        embeds: [
+          {
+            title: "New Purchase",
+            fields: [
+              {
+                name: "Item",
+                value: item.name,
+                inline: true
+              },
+              {
+                name: "Duration",
+                value: item.duration,
+                inline: true
+              },
+              {
+                name: "Price",
+                value: `${item.price} coins`,
+                inline: true
+              },
+              {
+                name: "Phone Number",
+                value: phoneNumber
+              },
+              {
+                name: "Generated Key",
+                value: key
+              }
+            ],
+            color: 3066993
+          }
+        ]
+      };
+      
+      // Log to Discord
+      await logToDiscord(`Purchase webhook sent: ${item.name} for ${item.price} coins to ${phoneNumber}`, 'info');
+      
+      return true;
+    } catch (error) {
+      console.error("Failed to send webhook:", error);
+      return false;
+    }
   };
   
   return (

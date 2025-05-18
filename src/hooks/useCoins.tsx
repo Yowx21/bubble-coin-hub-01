@@ -44,7 +44,7 @@ export function useCoins({ dailyLimit = 15 }: UseCoinsProps = {}) {
       
       toast({
         title: "Error",
-        description: "Failed to add coins to your balance",
+        description: "Failed to add coins to your balance. Please try again.",
         variant: "destructive",
       });
       
@@ -109,7 +109,7 @@ export function useCoins({ dailyLimit = 15 }: UseCoinsProps = {}) {
       
       toast({
         title: "Error",
-        description: "Failed to process your purchase",
+        description: "Failed to process your purchase. Please try again.",
         variant: "destructive",
       });
       

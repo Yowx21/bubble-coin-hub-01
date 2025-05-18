@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Menu, User, Users, ChevronDown, LogOut, Settings, Shield } from 'lucide-react';
 import SideMenu from './Menu';
@@ -5,7 +6,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
-import { OnlineUser } from '@/types/activeUsers';
 import { 
   Tooltip,
   TooltipContent,
@@ -49,25 +49,30 @@ const Header = ({ onLoginClick, onSignupClick }: HeaderProps) => {
     const fetchOnlineUsers = async () => {
       try {
         // Using raw SQL query because active_users isn't in the TypeScript types yet
-        const { data, error } = await supabase
-          .from('profiles')
-          .select(`
-            id,
-            username
-          `)
-          .in('id', (await supabase.rpc('get_active_user_ids')).data || []);
+        const { data: activeUsers, error: activeUsersError } = await supabase.rpc('get_active_user_ids');
         
-        if (error) throw error;
+        if (activeUsersError) throw activeUsersError;
+        
+        if (activeUsers && activeUsers.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, username')
+            .in('id', activeUsers);
+          
+          if (profilesError) throw profilesError;
 
-        if (data) {
-          const formattedUsers = data.map(item => ({
-            id: item.id,
-            username: item.username,
-            last_active: new Date().toISOString(), // We don't have this info from our query
-            status: 'online'
-          }));
+          if (profilesData) {
+            const formattedUsers = profilesData.map(item => ({
+              id: item.id,
+              username: item.username,
+              last_active: new Date().toISOString(),
+              status: 'online'
+            }));
 
-          setOnlineUsers(formattedUsers);
+            setOnlineUsers(formattedUsers);
+          }
+        } else {
+          setOnlineUsers([]);
         }
       } catch (error) {
         console.error("Error fetching online users:", error);

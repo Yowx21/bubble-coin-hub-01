@@ -9,13 +9,98 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      active_users: {
+        Row: {
+          last_active: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          last_active?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          last_active?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_admin: boolean | null
+          is_owner: boolean | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          is_admin?: boolean | null
+          is_owner?: boolean | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_admin?: boolean | null
+          is_owner?: boolean | null
+          username?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          balance: number | null
+          last_reward_claim: string | null
+          level: number | null
+          total_games: number | null
+          total_wagered: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          balance?: number | null
+          last_reward_claim?: string | null
+          level?: number | null
+          total_games?: number | null
+          total_wagered?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number | null
+          last_reward_claim?: string | null
+          level?: number | null
+          total_games?: number | null
+          total_wagered?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_active_user_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      insert_or_update_user_presence: {
+        Args: { p_user_id: string; p_status?: string }
+        Returns: undefined
+      }
+      update_user_balance: {
+        Args: { target_user_id: string; amount_change: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

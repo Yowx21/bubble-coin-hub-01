@@ -1,24 +1,12 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, logToDiscord } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Database } from '@/integrations/supabase/types';
 
-interface UserProfile {
-  id: string;
-  username: string;
-  is_admin: boolean;
-  is_owner: boolean;
-}
-
-interface Wallet {
-  user_id: string;
-  balance: number;
-  last_reward_claim?: Date | string | null;
-  total_wagered: number;
-  total_games: number;
-  level: number;
-  updated_at: string;
-}
+type UserProfile = Database['public']['Tables']['profiles']['Row'];
+type Wallet = Database['public']['Tables']['wallets']['Row'];
 
 interface AuthUser {
   id: string;
@@ -75,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (walletError) throw walletError;
 
       const profile = profileData as UserProfile;
-      const wallet = walletData as unknown as Wallet; // Cast to unknown first to bypass type check
+      const wallet = walletData as Wallet;
 
       // Convert string date to Date object if needed
       const lastRewardClaim = wallet.last_reward_claim 
@@ -86,16 +74,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userData: AuthUser = {
         id: userId,
         username: profile.username,
-        coins: wallet.balance,
-        isAdmin: profile.is_admin,
-        isOwner: profile.is_owner,
+        coins: wallet.balance || 0,
+        isAdmin: profile.is_admin || false,
+        isOwner: profile.is_owner || false,
         lastRewardClaim: lastRewardClaim,
         level: wallet.level,
       };
 
       setUser(userData);
+      logToDiscord(`User logged in: ${profile.username}`, 'info');
     } catch (error) {
       console.error('Error fetching user data:', error);
+      logToDiscord(`Error fetching user data: ${JSON.stringify(error)}`, 'error');
     }
   };
 
@@ -149,6 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error updating user presence with RPC:', error);
+        logToDiscord(`Error updating user presence: ${error.message}`, 'error');
       }
       
       // Broadcast presence update to all clients
@@ -159,8 +150,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         payload: { user_id: user.id }
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user presence:', error);
+      logToDiscord(`Error updating user presence: ${error.message}`, 'error');
     }
   };
 
@@ -183,12 +175,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Login successful!",
         description: "Welcome back to SPDM!",
       });
+      logToDiscord(`User login successful: ${email}`, 'info');
     } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message || "Please check your credentials and try again.",
         variant: "destructive",
       });
+      logToDiscord(`Login failed: ${error.message}`, 'error');
       throw error;
     } finally {
       setLoading(false);
@@ -213,12 +207,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Account created!",
         description: "Welcome to SPDM!",
       });
+      logToDiscord(`New user signup: ${username} (${email})`, 'info');
     } catch (error: any) {
       toast({
         title: "Signup failed",
         description: error.message || "Please check your information and try again.",
         variant: "destructive",
       });
+      logToDiscord(`Signup failed: ${error.message}`, 'error');
       throw error;
     } finally {
       setLoading(false);
@@ -227,11 +223,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      if (user) {
+        logToDiscord(`User logged out: ${user.username}`, 'info');
+      }
       await supabase.auth.signOut();
       setUser(null);
       setSession(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Logout failed:', error);
+      logToDiscord(`Logout failed: ${error.message}`, 'error');
     }
   };
 
@@ -252,8 +252,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         coins: prev.coins + amount
       } : null);
 
-    } catch (error) {
+      logToDiscord(`User ${user.username} coins updated: ${amount > 0 ? '+' : ''}${amount} coins`, 'info');
+    } catch (error: any) {
       console.error('Error updating user balance:', error);
+      logToDiscord(`Error updating user balance: ${error.message}`, 'error');
       throw error;
     }
   };

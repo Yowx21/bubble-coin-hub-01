@@ -3,13 +3,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Layout/Header';
 import Dashboard from '../components/Dashboard/Dashboard';
+import AuthModal from '../components/Auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
+import { motion } from 'framer-motion';
 
-const Index = () => {
+interface IndexProps {
+  activeTab?: 'rewards' | 'spin' | 'shop' | 'afk';
+}
+
+const Index = ({ activeTab: initialTab }: IndexProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'rewards' | 'spin' | 'shop' | 'afk'>('rewards');
-
+  const [activeTab, setActiveTab] = useState<'rewards' | 'spin' | 'shop' | 'afk'>(initialTab || 'rewards');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authType, setAuthType] = useState<'login' | 'signup'>('signup');
+  
   // Reference to create bubbles
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -39,7 +47,9 @@ const Index = () => {
       
       // Remove bubble after animation ends
       setTimeout(() => {
-        container.removeChild(bubble);
+        if (container.contains(bubble)) {
+          container.removeChild(bubble);
+        }
       }, 2000);
     }
   };
@@ -55,19 +65,24 @@ const Index = () => {
   
   // If user is logged in and there's a hash in the URL, show the appropriate tab
   useEffect(() => {
-    if (user) {
-      const hash = window.location.hash;
-      if (hash === '#free-key' || hash === '#rewards') {
-        setActiveTab('rewards');
-      } else if (hash === '#spin') {
-        setActiveTab('spin');
-      } else if (hash === '#shop') {
-        setActiveTab('shop');
-      } else if (hash === '#afk-farm' || hash === '#afk') {
-        setActiveTab('afk');
-      }
+    if (user && initialTab) {
+      setActiveTab(initialTab);
     }
-  }, [user]);
+  }, [user, initialTab]);
+
+  const handleGetStarted = () => {
+    setAuthType('signup');
+    setShowAuthModal(true);
+  };
+
+  const handleLogin = () => {
+    setAuthType('login');
+    setShowAuthModal(true);
+  };
+
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
+  };
   
   return (
     <div 
@@ -75,7 +90,7 @@ const Index = () => {
       ref={containerRef}
       onClick={createBubbles}
     >
-      <Header />
+      <Header onLoginClick={handleLogin} onSignupClick={handleGetStarted} />
       
       {/* Gradient overlay for visual effect */}
       <div className="fixed inset-0 bg-gradient-to-b from-spdm-green/5 to-transparent pointer-events-none"></div>
@@ -104,19 +119,23 @@ const Index = () => {
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-                  <button 
-                    onClick={() => navigate('/free-key')}
+                  <motion.button 
+                    onClick={handleGetStarted}
                     className="px-8 py-4 rounded-full bg-spdm-green hover:bg-spdm-darkGreen text-black font-semibold text-lg transition-all hover:shadow-lg hover:shadow-spdm-green/20"
+                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.05 }}
                   >
                     Get Started
-                  </button>
+                  </motion.button>
                   
-                  <button
+                  <motion.button
                     onClick={() => window.open('https://discord.gg/aJaKPWr42x', '_blank')}
                     className="px-8 py-4 rounded-full bg-transparent hover:bg-spdm-green/10 border-2 border-spdm-green text-spdm-green font-semibold text-lg transition-all"
+                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.05 }}
                   >
                     Join Discord
-                  </button>
+                  </motion.button>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -206,22 +225,34 @@ const Index = () => {
                 Create an account today and start earning coins
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button 
-                  onClick={() => navigate('/free-key')}
+                <motion.button 
+                  onClick={handleGetStarted}
                   className="px-8 py-4 rounded-full bg-spdm-green hover:bg-spdm-darkGreen text-black font-semibold text-lg transition-all hover:shadow-lg hover:shadow-spdm-green/20"
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.05 }}
                 >
                   Sign Up Now
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   onClick={() => window.open('https://chat.whatsapp.com/KteLnsPOMEKIJw3I1phViP', '_blank')}
                   className="px-8 py-4 rounded-full bg-transparent hover:bg-spdm-green/10 border-2 border-spdm-green text-spdm-green font-semibold text-lg transition-all"
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.05 }}
                 >
                   Join WhatsApp
-                </button>
+                </motion.button>
               </div>
             </div>
           </div>
         </div>
+      )}
+      
+      {showAuthModal && (
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={closeAuthModal} 
+          type={authType} 
+        />
       )}
     </div>
   );
@@ -229,10 +260,14 @@ const Index = () => {
 
 // Feature card component
 const FeatureCard = ({ title, description }: { title: string; description: string }) => (
-  <div className="bg-spdm-dark bg-opacity-80 backdrop-blur-sm p-6 rounded-lg border border-spdm-green/20 hover:border-spdm-green/50 transition-all">
+  <motion.div 
+    className="bg-spdm-dark bg-opacity-80 backdrop-blur-sm p-6 rounded-lg border border-spdm-green/20 hover:border-spdm-green/50 transition-all"
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.98 }}
+  >
     <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
     <p className="text-gray-400">{description}</p>
-  </div>
+  </motion.div>
 );
 
 export default Index;

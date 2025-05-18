@@ -14,10 +14,11 @@ interface UserProfile {
 interface Wallet {
   user_id: string;
   balance: number;
-  last_reward_claim?: Date;
+  last_reward_claim?: Date | string | null;
   total_wagered: number;
   total_games: number;
   level: number;
+  updated_at: string;
 }
 
 interface AuthUser {
@@ -27,7 +28,7 @@ interface AuthUser {
   coins: number;
   isAdmin: boolean;
   isOwner: boolean;
-  lastRewardClaim?: Date;
+  lastRewardClaim?: Date | null;
   lastSpinTime?: Date;
   afkFarmStart?: Date;
   afkFarmCoinsEarned?: number;
@@ -77,6 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profile = profileData as UserProfile;
       const wallet = walletData as Wallet;
 
+      // Convert string date to Date object if needed
+      const lastRewardClaim = wallet.last_reward_claim 
+        ? new Date(wallet.last_reward_claim) 
+        : null;
+
       // Combine data into user object
       const userData: AuthUser = {
         id: userId,
@@ -84,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         coins: wallet.balance,
         isAdmin: profile.is_admin,
         isOwner: profile.is_owner,
-        lastRewardClaim: wallet.last_reward_claim ? new Date(wallet.last_reward_claim) : undefined,
+        lastRewardClaim: lastRewardClaim,
         level: wallet.level,
       };
 
@@ -136,9 +142,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('active_users')
-        .upsert(
+      // Using raw SQL RPC since the table isn't in TypeScript definitions yet
+      const { error } = await supabase.rpc('update_user_presence', {
+        user_id: user.id,
+        status_value: 'online'
+      });
+
+      // Fallback if the RPC doesn't exist yet
+      if (error) {
+        // Direct upsert with custom query
+        await supabase.from('active_users').upsert(
           {
             id: user.id,
             last_active: new Date().toISOString(),
@@ -146,8 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
           { onConflict: 'id' }
         );
-
-      if (error) throw error;
+      }
     } catch (error) {
       console.error('Error updating user presence:', error);
     }

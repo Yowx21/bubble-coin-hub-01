@@ -10,9 +10,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
+  onLoginClick?: () => void;
+  onSignupClick?: () => void;
 }
 
-const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
+const SideMenu = ({ isOpen, onClose, onLoginClick, onSignupClick }: SideMenuProps) => {
   const [authType, setAuthType] = useState<'login' | 'signup' | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -31,6 +33,18 @@ const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
   }, [isOpen, onClose]);
 
   const openAuth = (type: 'login' | 'signup') => {
+    if (onLoginClick && type === 'login') {
+      onLoginClick();
+      onClose();
+      return;
+    }
+    
+    if (onSignupClick && type === 'signup') {
+      onSignupClick();
+      onClose();
+      return;
+    }
+    
     setAuthType(type);
   };
 
@@ -237,7 +251,9 @@ const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
         )}
       </AnimatePresence>
 
-      <AuthModal isOpen={authType !== null} onClose={closeAuth} type={authType || 'login'} />
+      {authType !== null && !onLoginClick && !onSignupClick && (
+        <AuthModal isOpen={authType !== null} onClose={closeAuth} type={authType || 'login'} />
+      )}
     </>
   );
 };

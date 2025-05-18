@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { X, LogIn, UserPlus, Gift, ShoppingCart, RotateCw, AfkFarm } from 'lucide-react';
+import { X, LogIn, UserPlus, Gift, ShoppingCart, RotateCw, Timer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import AuthModal from '../Auth/AuthModal';
 import { useAuth } from '@/hooks/useAuth';
@@ -106,7 +106,7 @@ const SideMenu = ({ isOpen, onClose }: SideMenuProps) => {
                 onClick={() => handleNavigate('/afk-farm')}
                 className="flex items-center p-3 rounded-md hover:bg-spdm-gray transition-all duration-200 border border-spdm-green/50 hover:border-spdm-green group"
               >
-                <AfkFarm className="mr-3 text-spdm-green" size={20} />
+                <Timer className="mr-3 text-spdm-green" size={20} />
                 <span className="text-spdm-green group-hover:glow-text transition-all duration-200">AFK Farm</span>
               </button>
             </>

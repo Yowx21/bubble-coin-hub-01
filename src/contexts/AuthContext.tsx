@@ -73,7 +73,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           .single();
         
         if (!error) {
-          walletData = data as Wallet;
+          // Explicitly cast the data to Wallet type
+          walletData = data as unknown as Wallet;
         } else if (error.code === 'PGRST116') {
           // Wallet doesn't exist yet, create one
           const { error: createWalletError } = await supabase.rpc('update_user_balance', {
@@ -91,7 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .single();
             
           if (newWalletError) throw newWalletError;
-          walletData = newWallet as Wallet;
+          // Explicitly cast the newWallet data to Wallet type
+          walletData = newWallet as unknown as Wallet;
         } else {
           throw error;
         }

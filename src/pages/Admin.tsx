@@ -45,29 +45,41 @@ const Admin = () => {
 
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // Using a simpler query approach to avoid TypeScript errors
+        const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select(`
-            id, 
-            username, 
-            is_admin,
-            auth.users!inner(email),
-            wallets!inner(balance)
-          `);
-
-        if (error) throw error;
-        
-        if (data) {
-          const formattedUsers = data.map(item => ({
-            id: item.id,
-            username: item.username,
-            is_admin: item.is_admin,
-            email: (item.users as any).email,
-            balance: (item.wallets as any).balance
-          }));
+          .select('id, username, is_admin');
           
-          setUsers(formattedUsers);
-        }
+        if (profilesError) throw profilesError;
+        
+        // Get user emails
+        const { data: usersData, error: usersError } = await supabase
+          .rpc('get_user_emails');
+          
+        if (usersError) throw usersError;
+          
+        // Get wallet balances
+        const { data: walletsData, error: walletsError } = await supabase
+          .from('wallets')
+          .select('user_id, balance');
+          
+        if (walletsError) throw walletsError;
+          
+        // Combine the data
+        const formattedUsers = profilesData.map(profile => {
+          const userEmail = usersData.find((u: any) => u.id === profile.id)?.email || '';
+          const userBalance = walletsData.find(w => w.user_id === profile.id)?.balance || 0;
+          
+          return {
+            id: profile.id,
+            username: profile.username,
+            is_admin: profile.is_admin,
+            email: userEmail,
+            balance: userBalance
+          };
+        });
+        
+        setUsers(formattedUsers);
       } catch (error) {
         console.error('Error fetching users:', error);
         toast({

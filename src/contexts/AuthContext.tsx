@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -137,29 +136,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setupAuth();
   }, []);
 
-  // Update user presence in active_users table
+  // Update user presence in active_users table using RPC
   const updatePresence = async () => {
     if (!user) return;
 
     try {
-      // Using raw SQL RPC since the table isn't in TypeScript definitions yet
+      // Use RPC function instead of direct table access
       const { error } = await supabase.rpc('update_user_presence', {
         user_id: user.id,
         status_value: 'online'
       });
 
-      // Fallback if the RPC doesn't exist yet
       if (error) {
-        // Direct upsert with custom query
-        await supabase.from('active_users').upsert(
-          {
-            id: user.id,
-            last_active: new Date().toISOString(),
-            status: 'online'
-          },
-          { onConflict: 'id' }
-        );
+        console.error('Error updating user presence with RPC:', error);
+        
+        // Fallback approach using raw SQL
+        const { error: sqlError } = await supabase.rpc('insert_or_update_user_presence', {
+          p_user_id: user.id,
+          p_status: 'online'
+        });
+        
+        if (sqlError) {
+          console.error('Fallback presence update failed:', sqlError);
+        }
       }
+      
+      // Broadcast presence update to all clients
+      const channel = supabase.channel('presence-updates');
+      channel.send({
+        type: 'broadcast',
+        event: 'presence-update',
+        payload: { user_id: user.id }
+      });
+      
     } catch (error) {
       console.error('Error updating user presence:', error);
     }

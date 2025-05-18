@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Menu, User, Users, ChevronDown, LogOut, Settings, Shield } from 'lucide-react';
 import SideMenu from './Menu';
@@ -6,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { motion } from 'framer-motion';
+import { OnlineUser } from '@/types/activeUsers';
 import { 
   Tooltip,
   TooltipContent,
@@ -50,24 +50,21 @@ const Header = ({ onLoginClick, onSignupClick }: HeaderProps) => {
       try {
         // Using raw SQL query because active_users isn't in the TypeScript types yet
         const { data, error } = await supabase
-          .from('active_users')
+          .from('profiles')
           .select(`
             id,
-            last_active,
-            status,
-            profiles!inner(username)
+            username
           `)
-          .eq('status', 'online')
-          .gt('last_active', new Date(Date.now() - 5 * 60000).toISOString());
+          .in('id', (await supabase.rpc('get_active_user_ids')).data || []);
         
         if (error) throw error;
 
         if (data) {
           const formattedUsers = data.map(item => ({
             id: item.id,
-            username: (item.profiles as any).username,
-            last_active: item.last_active,
-            status: item.status
+            username: item.username,
+            last_active: new Date().toISOString(), // We don't have this info from our query
+            status: 'online'
           }));
 
           setOnlineUsers(formattedUsers);
@@ -80,19 +77,12 @@ const Header = ({ onLoginClick, onSignupClick }: HeaderProps) => {
     // Initial fetch
     fetchOnlineUsers();
 
-    // Set up realtime subscription
+    // Set up realtime subscription using a channel with a simpler approach
     const channel = supabase
-      .channel('public:active_users')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'active_users' 
-        }, 
-        () => {
-          fetchOnlineUsers();
-        }
-      )
+      .channel('presence-updates')
+      .on('broadcast', { event: 'presence-update' }, () => {
+        fetchOnlineUsers();
+      })
       .subscribe();
 
     return () => {

@@ -66,11 +66,11 @@ const Admin = () => {
         let walletsData: WalletData[] = [];
         try {
           const { data, error } = await supabase
-            .from('wallets')
+            .from('wallets' as any)
             .select('user_id, balance');
             
           if (!error && data) {
-            walletsData = data as WalletData[];
+            walletsData = data as unknown as WalletData[];
           }
         } catch (error) {
           console.error('Error fetching wallets:', error);

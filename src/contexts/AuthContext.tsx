@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         // Try to fetch existing wallet
         const { data, error } = await supabase
-          .from('wallets')
+          .from('wallets' as any)
           .select('*')
           .eq('user_id', userId)
           .single();
@@ -85,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Fetch the newly created wallet
           const { data: newWallet, error: newWalletError } = await supabase
-            .from('wallets')
+            .from('wallets' as any)
             .select('*')
             .eq('user_id', userId)
             .single();

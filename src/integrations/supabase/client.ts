@@ -34,9 +34,9 @@ export async function logToDiscord(message: string, type: 'info' | 'warning' | '
     };
     
     const payload = {
-      username: "SPDM Bot",
+      username: "Yowx Bot",
       embeds: [{
-        title: `${type.toUpperCase()}: SPDM Log`,
+        title: `${type.toUpperCase()}: Yowx Log`,
         description: message,
         color: colors[type],
         timestamp: new Date().toISOString()

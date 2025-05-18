@@ -6,7 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 
 type UserProfile = Database['public']['Tables']['profiles']['Row'];
-type Wallet = Database['public']['Tables']['wallets']['Row'];
 
 interface AuthUser {
   id: string;
@@ -53,32 +52,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (profileError) throw profileError;
 
-      // Fetch wallet data
+      // Fetch wallet data using a direct SELECT query
       const { data: walletData, error: walletError } = await supabase
         .from('wallets')
         .select('*')
         .eq('user_id', userId)
         .single();
 
-      if (walletError) throw walletError;
+      if (walletError) {
+        // If the wallet doesn't exist yet, create one
+        if (walletError.code === 'PGRST116') {
+          // Create a new wallet for the user
+          const { error: createWalletError } = await supabase.rpc('update_user_balance', {
+            target_user_id: userId,
+            amount_change: 100 // Initial balance
+          });
+          
+          if (createWalletError) throw createWalletError;
+          
+          // Fetch the newly created wallet
+          const { data: newWallet, error: newWalletError } = await supabase
+            .from('wallets')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+            
+          if (newWalletError) throw newWalletError;
+          walletData = newWallet;
+        } else {
+          throw walletError;
+        }
+      }
+
+      // Get user email
+      const { data: authUserData } = await supabase.auth.getUser();
+      const userEmail = authUserData?.user?.email;
 
       const profile = profileData as UserProfile;
-      const wallet = walletData as Wallet;
-
+      
       // Convert string date to Date object if needed
-      const lastRewardClaim = wallet.last_reward_claim 
-        ? new Date(wallet.last_reward_claim) 
+      const lastRewardClaim = walletData?.last_reward_claim 
+        ? new Date(walletData.last_reward_claim) 
         : null;
 
       // Combine data into user object
       const userData: AuthUser = {
         id: userId,
+        email: userEmail,
         username: profile.username,
-        coins: wallet.balance || 0,
+        coins: walletData?.balance || 0,
         isAdmin: profile.is_admin || false,
         isOwner: profile.is_owner || false,
         lastRewardClaim: lastRewardClaim,
-        level: wallet.level,
+        level: walletData?.level || 1,
       };
 
       setUser(userData);
@@ -173,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       toast({
         title: "Login successful!",
-        description: "Welcome back to SPDM!",
+        description: "Welcome back to Yowx Mods!",
       });
       logToDiscord(`User login successful: ${email}`, 'info');
     } catch (error: any) {
@@ -205,7 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       toast({
         title: "Account created!",
-        description: "Welcome to SPDM!",
+        description: "Welcome to Yowx Mods!",
       });
       logToDiscord(`New user signup: ${username} (${email})`, 'info');
     } catch (error: any) {
@@ -238,10 +264,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateUserCoins = async (amount: number) => {
     if (!user) return;
 
+    // Ensure amount is an integer
+    const intAmount = Math.round(amount);
+
     try {
       const { error } = await supabase.rpc('update_user_balance', {
         target_user_id: user.id,
-        amount_change: amount
+        amount_change: intAmount
       });
 
       if (error) throw error;
@@ -249,10 +278,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Update local user state
       setUser(prev => prev ? {
         ...prev,
-        coins: prev.coins + amount
+        coins: prev.coins + intAmount
       } : null);
 
-      logToDiscord(`User ${user.username} coins updated: ${amount > 0 ? '+' : ''}${amount} coins`, 'info');
+      logToDiscord(`User ${user.username} coins updated: ${intAmount > 0 ? '+' : ''}${intAmount} coins`, 'info');
     } catch (error: any) {
       console.error('Error updating user balance:', error);
       logToDiscord(`Error updating user balance: ${error.message}`, 'error');

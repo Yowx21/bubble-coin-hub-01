@@ -54,36 +54,6 @@ export type Database = {
         }
         Relationships: []
       }
-      wallets: {
-        Row: {
-          balance: number | null
-          last_reward_claim: string | null
-          level: number | null
-          total_games: number | null
-          total_wagered: number | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          balance?: number | null
-          last_reward_claim?: string | null
-          level?: number | null
-          total_games?: number | null
-          total_wagered?: number | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          balance?: number | null
-          last_reward_claim?: string | null
-          level?: number | null
-          total_games?: number | null
-          total_wagered?: number | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

@@ -22,7 +22,7 @@ const WalletDisplay = () => {
     if (user) {
       setLastBalance(user.coins);
     }
-  }, [user, lastBalance]);
+  }, [user?.coins]);
   
   if (!user) return null;
   

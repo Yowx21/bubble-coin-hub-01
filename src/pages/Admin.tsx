@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Layout/Header';
@@ -12,6 +13,7 @@ interface UserItem {
   id: string;
   username: string;
   is_admin: boolean;
+  is_owner: boolean;
   email: string;
   balance: number;
 }
@@ -27,7 +29,7 @@ const Admin = () => {
 
   // Redirect if not admin
   useEffect(() => {
-    if (user && !user.isAdmin) {
+    if (user && !user.isAdmin && !user.isOwner) {
       navigate('/');
       toast({
         title: "Access Denied",
@@ -40,23 +42,21 @@ const Admin = () => {
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
-      if (!user?.isAdmin) return;
+      if (!user?.isAdmin && !user?.isOwner) return;
 
       setLoading(true);
       try {
         // Using a simpler query approach to avoid TypeScript errors
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, username, is_admin');
+          .select('id, username, is_admin, is_owner');
           
         if (profilesError) throw profilesError;
         
-        // Get user emails
-        const { data: usersData, error: usersError } = await supabase
-          .rpc('get_user_emails');
-          
-        if (usersError) throw usersError;
-          
+        // Get user emails - Direct query instead of RPC
+        const { data: authData } = await supabase.auth.admin.listUsers();
+        const usersData = authData?.users || [];
+        
         // Get wallet balances
         const { data: walletsData, error: walletsError } = await supabase
           .from('wallets')
@@ -66,13 +66,15 @@ const Admin = () => {
           
         // Combine the data
         const formattedUsers = profilesData.map(profile => {
-          const userEmail = usersData?.find((u: any) => u.id === profile.id)?.email || '';
+          const userData = usersData.find(u => u.id === profile.id);
+          const userEmail = userData?.email || '';
           const userBalance = walletsData?.find(w => w.user_id === profile.id)?.balance || 0;
           
           return {
             id: profile.id,
             username: profile.username,
-            is_admin: profile.is_admin,
+            is_admin: profile.is_admin || false,
+            is_owner: profile.is_owner || false,
             email: userEmail,
             balance: userBalance
           };
@@ -132,10 +134,11 @@ const Admin = () => {
 
   const toggleAdminStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase.rpc('set_admin_status', {
-        target_user_id: userId,
-        is_admin_status: !currentStatus
-      });
+      // Direct query instead of RPC
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_admin: !currentStatus })
+        .eq('id', userId);
       
       if (error) throw error;
       
@@ -163,6 +166,48 @@ const Admin = () => {
     }
   };
 
+  const toggleOwnerStatus = async (userId: string, currentStatus: boolean) => {
+    if (!user?.isOwner) {
+      toast({
+        title: "Access Denied",
+        description: "Only owners can change owner status",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_owner: !currentStatus })
+        .eq('id', userId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: `User owner status updated successfully`,
+      });
+      
+      // Update the local state
+      setUsers(prevUsers => 
+        prevUsers.map(u => 
+          u.id === userId 
+            ? { ...u, is_owner: !u.is_owner } 
+            : u
+        )
+      );
+      
+    } catch (error) {
+      console.error('Error updating owner status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update owner status",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Container animation
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -183,7 +228,7 @@ const Admin = () => {
     }
   };
 
-  if (!user || !user.isAdmin) {
+  if (!user || (!user.isAdmin && !user.isOwner)) {
     return (
       <div className="min-h-screen bg-spdm-black text-white">
         <Header />
@@ -231,6 +276,9 @@ const Admin = () => {
                         <th className="px-4 py-3 text-spdm-green">Email</th>
                         <th className="px-4 py-3 text-spdm-green">Balance</th>
                         <th className="px-4 py-3 text-spdm-green">Admin</th>
+                        {user.isOwner && (
+                          <th className="px-4 py-3 text-spdm-green">Owner</th>
+                        )}
                         <th className="px-4 py-3 text-spdm-green">Actions</th>
                       </tr>
                     </thead>
@@ -239,41 +287,61 @@ const Admin = () => {
                       initial="hidden"
                       animate="visible"
                     >
-                      {users.map((user) => (
+                      {users.map((userItem) => (
                         <motion.tr 
-                          key={user.id} 
+                          key={userItem.id} 
                           className="border-b border-spdm-green/10 hover:bg-spdm-green/5 transition-colors"
                           variants={itemVariants}
                         >
-                          <td className="px-4 py-3">{user.username}</td>
-                          <td className="px-4 py-3">{user.email}</td>
-                          <td className="px-4 py-3">{user.balance} coins</td>
+                          <td className="px-4 py-3">{userItem.username}</td>
+                          <td className="px-4 py-3">{userItem.email}</td>
+                          <td className="px-4 py-3">{userItem.balance} coins</td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs ${user.is_admin ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                              {user.is_admin ? 'Yes' : 'No'}
+                            <span className={`px-2 py-1 rounded-full text-xs ${userItem.is_admin ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                              {userItem.is_admin ? 'Yes' : 'No'}
                             </span>
                           </td>
+                          {user.isOwner && (
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 rounded-full text-xs ${userItem.is_owner ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                {userItem.is_owner ? 'Yes' : 'No'}
+                              </span>
+                            </td>
+                          )}
                           <td className="px-4 py-3">
                             <div className="flex space-x-2">
                               <Button 
                                 variant="outline" 
                                 size="sm" 
                                 className="border-spdm-green/30 hover:bg-spdm-green/10 text-spdm-green"
-                                onClick={() => setSelectedUser(user.id)}
+                                onClick={() => setSelectedUser(userItem.id)}
                               >
                                 Add Coins
                               </Button>
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className={user.is_admin 
+                                className={userItem.is_admin 
                                   ? "border-red-500/30 hover:bg-red-500/10 text-red-400"
                                   : "border-green-500/30 hover:bg-green-500/10 text-green-400"
                                 }
-                                onClick={() => toggleAdminStatus(user.id, user.is_admin)}
+                                onClick={() => toggleAdminStatus(userItem.id, userItem.is_admin)}
                               >
-                                {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                                {userItem.is_admin ? 'Remove Admin' : 'Make Admin'}
                               </Button>
+                              {user.isOwner && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className={userItem.is_owner 
+                                    ? "border-purple-500/30 hover:bg-purple-500/10 text-purple-400"
+                                    : "border-blue-500/30 hover:bg-blue-500/10 text-blue-400"
+                                  }
+                                  onClick={() => toggleOwnerStatus(userItem.id, userItem.is_owner)}
+                                >
+                                  {userItem.is_owner ? 'Remove Owner' : 'Make Owner'}
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </motion.tr>

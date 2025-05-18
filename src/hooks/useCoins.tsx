@@ -26,12 +26,15 @@ export function useCoins({ dailyLimit = 15 }: UseCoinsProps = {}) {
     setLoading(true);
     
     try {
-      // In a real app, this would be an API call to update the user's coin balance
-      updateUserCoins(amount);
+      // Convert to integer
+      const intAmount = Math.round(amount);
+      
+      // Call API to update user's coin balance
+      await updateUserCoins(intAmount);
       
       toast({
         title: "Success!",
-        description: `You earned ${amount} coins from ${source}!`,
+        description: `You earned ${intAmount} coins from ${source}!`,
         variant: "default",
       });
       
@@ -88,12 +91,15 @@ export function useCoins({ dailyLimit = 15 }: UseCoinsProps = {}) {
     setLoading(true);
     
     try {
-      // In a real app, this would be an API call to update the user's coin balance
-      updateUserCoins(-amount);
+      // Convert to integer
+      const intAmount = Math.round(amount);
+      
+      // Call API to update user's coin balance (negative amount for spending)
+      await updateUserCoins(-intAmount);
       
       toast({
         title: "Purchase successful!",
-        description: `You spent ${amount} coins on ${item}`,
+        description: `You spent ${intAmount} coins on ${item}`,
         variant: "default",
       });
       

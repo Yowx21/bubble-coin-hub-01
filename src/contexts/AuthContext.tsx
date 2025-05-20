@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, logToDiscord } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast'; // Use the re-exported version
 import { Database } from '@/integrations/supabase/types';
 
 type UserProfile = Database['public']['Tables']['profiles']['Row'];

@@ -6,14 +6,16 @@ import RewardLinks from "../Rewards/RewardLinks";
 import SpinWheel from "../SpinWheel/SpinWheel";
 import Shop from "../Shop/Shop";
 import AfkFarm from "../AFK/AfkFarm";
+import Leaderboard from "../Leaderboard/Leaderboard";
+import PromoCodeForm from "../PromoCode/PromoCodeForm";
 
 interface DashboardProps {
-  activeTab?: 'rewards' | 'spin' | 'shop' | 'afk';
+  activeTab?: 'rewards' | 'spin' | 'shop' | 'afk' | 'leaderboard';
 }
 
 const Dashboard = ({ activeTab = 'rewards' }: DashboardProps) => {
   const { user } = useAuth();
-  const [currentTab, setCurrentTab] = useState<'rewards' | 'spin' | 'shop' | 'afk'>(activeTab);
+  const [currentTab, setCurrentTab] = useState<'rewards' | 'spin' | 'shop' | 'afk' | 'leaderboard'>(activeTab);
   
   // Update tab when activeTab prop changes
   useEffect(() => {
@@ -36,9 +38,16 @@ const Dashboard = ({ activeTab = 'rewards' }: DashboardProps) => {
       <div className="max-w-5xl mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-6 text-spdm-green glow-text">Dashboard</h1>
         
-        <WalletDisplay />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="md:col-span-2">
+            <WalletDisplay />
+          </div>
+          <div className="md:col-span-1">
+            <PromoCodeForm />
+          </div>
+        </div>
         
-        <div className="mt-8 mb-6">
+        <div className="mb-6">
           <div className="flex overflow-x-auto pb-2 space-x-2">
             <TabButton 
               active={currentTab === 'rewards'} 
@@ -60,6 +69,11 @@ const Dashboard = ({ activeTab = 'rewards' }: DashboardProps) => {
               onClick={() => setCurrentTab('afk')}
               label="AFK Farm"
             />
+            <TabButton 
+              active={currentTab === 'leaderboard'} 
+              onClick={() => setCurrentTab('leaderboard')}
+              label="Leaderboard"
+            />
           </div>
         </div>
         
@@ -68,6 +82,7 @@ const Dashboard = ({ activeTab = 'rewards' }: DashboardProps) => {
           {currentTab === 'spin' && <SpinWheel />}
           {currentTab === 'shop' && <Shop />}
           {currentTab === 'afk' && <AfkFarm />}
+          {currentTab === 'leaderboard' && <Leaderboard />}
         </div>
       </div>
     </div>

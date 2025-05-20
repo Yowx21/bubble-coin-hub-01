@@ -25,6 +25,7 @@ const App = () => (
             <Route path="/spin" element={<Index activeTab="spin" />} />
             <Route path="/shop" element={<Index activeTab="shop" />} />
             <Route path="/afk-farm" element={<Index activeTab="afk" />} />
+            <Route path="/leaderboard" element={<Index activeTab="leaderboard" />} />
             <Route path="/admin" element={<Admin />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

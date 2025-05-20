@@ -1,411 +1,379 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Header from '@/components/Layout/Header';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { RefreshCw, Copy, CheckCircle, XCircle } from 'lucide-react';
 
-// Define interfaces to handle types properly
-interface UserItem {
-  id: string;
-  username: string;
-  is_admin: boolean;
-  is_owner: boolean;
-  email: string;
-  balance: number;
-}
-
-interface WalletData {
-  user_id: string;
-  balance: number;
-}
+import PromoCodeManager from "@/components/Admin/PromoCodeManager";
 
 const Admin = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [users, setUsers] = useState<UserItem[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [coinAmount, setCoinAmount] = useState<number>(0);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(10);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    totalCoins: 0,
+  });
+  const [updatingBalance, setUpdatingBalance] = useState(false);
+  const [updateUserId, setUpdateUserId] = useState('');
+  const [updateAmount, setUpdateAmount] = useState('');
 
-  // Redirect if not admin
   useEffect(() => {
-    if (user && !user.isAdmin && !user.isOwner) {
-      navigate('/');
+    if (!user?.isAdmin && !user?.isOwner) {
       toast({
-        title: "Access Denied",
-        description: "You don't have permission to access the admin panel",
-        variant: "destructive",
-      });
-    }
-  }, [user, navigate]);
-
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!user?.isAdmin && !user?.isOwner) return;
-
-      setLoading(true);
-      try {
-        // Using a simpler query approach to avoid TypeScript errors
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, is_admin, is_owner');
-          
-        if (profilesError) throw profilesError;
-        
-        // Get user emails - Direct query instead of RPC
-        const { data: authData } = await supabase.auth.admin.listUsers();
-        const usersData = authData?.users || [];
-        
-        // Get wallet balances - use type assertion for now
-        let walletsData: WalletData[] = [];
-        try {
-          const { data, error } = await supabase
-            .from('wallets' as any)
-            .select('user_id, balance');
-            
-          if (!error && data) {
-            walletsData = data as unknown as WalletData[];
-          }
-        } catch (error) {
-          console.error('Error fetching wallets:', error);
-        }
-          
-        // Combine the data
-        const formattedUsers = profilesData.map(profile => {
-          const userData = usersData.find(u => u.id === profile.id);
-          const userEmail = userData?.email || '';
-          const userBalance = walletsData?.find(w => w.user_id === profile.id)?.balance || 0;
-          
-          return {
-            id: profile.id,
-            username: profile.username,
-            is_admin: profile.is_admin || false,
-            is_owner: profile.is_owner || false,
-            email: userEmail,
-            balance: userBalance
-          };
-        });
-        
-        setUsers(formattedUsers);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load users",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, [user]);
-
-  const handleAddCoins = async () => {
-    if (!selectedUser || coinAmount === 0) return;
-    
-    try {
-      const { error } = await supabase.rpc('update_user_balance', {
-        target_user_id: selectedUser,
-        amount_change: coinAmount
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: `Added ${coinAmount} coins to the user's balance`,
-      });
-      
-      // Update the local state
-      setUsers(prevUsers => 
-        prevUsers.map(u => 
-          u.id === selectedUser 
-            ? { ...u, balance: u.balance + coinAmount } 
-            : u
-        )
-      );
-      
-      setCoinAmount(0);
-    } catch (error) {
-      console.error('Error adding coins:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add coins",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleAdminStatus = async (userId: string, currentStatus: boolean) => {
-    try {
-      // Direct query instead of RPC
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: !currentStatus })
-        .eq('id', userId);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: `User admin status updated successfully`,
-      });
-      
-      // Update the local state
-      setUsers(prevUsers => 
-        prevUsers.map(u => 
-          u.id === userId 
-            ? { ...u, is_admin: !u.is_admin } 
-            : u
-        )
-      );
-      
-    } catch (error) {
-      console.error('Error updating admin status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update admin status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleOwnerStatus = async (userId: string, currentStatus: boolean) => {
-    if (!user?.isOwner) {
-      toast({
-        title: "Access Denied",
-        description: "Only owners can change owner status",
+        title: "Unauthorized",
+        description: "You do not have permission to view this page.",
         variant: "destructive",
       });
       return;
     }
-    
+    fetchUsers();
+    fetchStats();
+  }, [user]);
+
+  const fetchUsers = async () => {
+    setLoading(true);
     try {
-      const { error } = await supabase
+      let query = supabase
         .from('profiles')
-        .update({ is_owner: !currentStatus })
-        .eq('id', userId);
-      
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (searchTerm) {
+        query = query.ilike('username', `%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: `User owner status updated successfully`,
-      });
-      
-      // Update the local state
-      setUsers(prevUsers => 
-        prevUsers.map(u => 
-          u.id === userId 
-            ? { ...u, is_owner: !u.is_owner } 
-            : u
-        )
-      );
-      
-    } catch (error) {
-      console.error('Error updating owner status:', error);
+
+      setUsers(data || []);
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to update owner status",
+        description: error.message || "Failed to fetch users.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const { data: totalUsersData } = await supabase
+        .from('profiles')
+        .select('count', { count: 'exact' });
+
+      const { data: activeUsersData } = await supabase.rpc('get_active_user_ids');
+
+      const { data: walletsData } = await supabase
+        .from('wallets' as any)
+        .select('balance');
+
+      let totalCoins = 0;
+      if (walletsData) {
+        totalCoins = walletsData.reduce((acc: number, wallet: any) => acc + wallet.balance, 0);
+      }
+
+      setStats({
+        totalUsers: totalUsersData ? totalUsersData[0].count : 0,
+        activeUsers: activeUsersData ? activeUsersData.length : 0,
+        totalCoins: totalCoins,
+      });
+    } catch (error: any) {
+      console.error("Error fetching stats:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch statistics.",
         variant: "destructive",
       });
     }
   };
 
-  // Container animation
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+  const handleRefreshUsers = async () => {
+    setRefreshing(true);
+    await fetchUsers();
+    setRefreshing(false);
   };
-  
-  // Item animation
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1
+
+  const updateUserRole = async (userId: string, isAdmin: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_admin: !isAdmin })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `User role updated successfully.`,
+      });
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user role.",
+        variant: "destructive",
+      });
     }
   };
 
-  if (!user || (!user.isAdmin && !user.isOwner)) {
-    return (
-      <div className="min-h-screen bg-spdm-black text-white">
-        <Header />
-        <div className="pt-24 pb-20 flex items-center justify-center">
-          <p>Loading...</p>
+  const handleUpdateBalance = async () => {
+    if (!updateUserId || !updateAmount) {
+      toast({
+        title: "Error",
+        description: "Please enter both user ID and amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUpdatingBalance(true);
+    try {
+      const amount = parseInt(updateAmount, 10);
+      if (isNaN(amount)) {
+        throw new Error("Invalid amount. Please enter a number.");
+      }
+
+      const { error } = await supabase.rpc('update_user_balance', {
+        target_user_id: updateUserId,
+        amount_change: amount
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "User balance updated successfully.",
+      });
+      fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update user balance.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingBalance(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: "User ID copied to clipboard.",
+    });
+  };
+
+  // Pagination
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+      {/* Admin Dashboard Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold text-spdm-green mb-8">Admin Dashboard</h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1 bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+            <h2 className="text-xl font-semibold text-spdm-green mb-4">Quick Stats</h2>
+            <div className="space-y-4">
+              <div className="bg-spdm-gray p-4 rounded-lg">
+                <div className="text-sm text-gray-400 mb-1">Total Users</div>
+                <div className="text-2xl font-bold">{stats.totalUsers || 0}</div>
+              </div>
+              <div className="bg-spdm-gray p-4 rounded-lg">
+                <div className="text-sm text-gray-400 mb-1">Active Users (24h)</div>
+                <div className="text-2xl font-bold">{stats.activeUsers || 0}</div>
+              </div>
+              <div className="bg-spdm-gray p-4 rounded-lg">
+                <div className="text-sm text-gray-400 mb-1">Total Coins in Circulation</div>
+                <div className="text-2xl font-bold">{stats.totalCoins?.toLocaleString() || 0}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+            <h2 className="text-xl font-semibold text-spdm-green mb-4">User Management</h2>
+            <div className="flex justify-between mb-4">
+              <Input 
+                placeholder="Search users..." 
+                className="max-w-xs bg-spdm-gray border-spdm-green/20"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Button onClick={handleRefreshUsers} variant="outline" className="border-spdm-green/30 text-spdm-green">
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">User ID</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Admin</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">Loading users...</TableCell>
+                    </TableRow>
+                  ) : currentUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">No users found.</TableCell>
+                    </TableRow>
+                  ) : (
+                    currentUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center">
+                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(user.id)} className="mr-2 h-auto w-auto p-1">
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                            {user.id.substring(0, 8)}...
+                          </div>
+                        </TableCell>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.id}</TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className={user.is_admin ? "bg-green-500/20 text-green-500 border-green-500/30 hover:bg-green-500/30" : "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20"}
+                            onClick={() => updateUserRole(user.id, user.is_admin)}
+                          >
+                            {user.is_admin ? <CheckCircle className="h-4 w-4 mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+                            {user.is_admin ? 'Admin' : 'User'}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          {/* Add any additional actions here */}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            
+            <div className="mt-4 flex justify-center">
+              <div className="join">
+                <Button
+                  className="join-item"
+                  disabled={currentPage === 1}
+                  onClick={() => paginate(currentPage - 1)}
+                >
+                  «
+                </Button>
+                {Array.from({ length: Math.ceil(users.length / usersPerPage) }, (_, i) => i + 1).map(number => (
+                  <Button
+                    key={number}
+                    className={`join-item ${currentPage === number ? 'btn-active' : ''}`}
+                    onClick={() => paginate(number)}
+                  >
+                    {number}
+                  </Button>
+                ))}
+                <Button
+                  className="join-item"
+                  disabled={currentPage === Math.ceil(users.length / usersPerPage)}
+                  onClick={() => paginate(currentPage + 1)}
+                >
+                  »
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Promo Code Manager Section */}
+        <div className="mb-8">
+          <PromoCodeManager />
+        </div>
+
+        {/* Additional Admin Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+            <h2 className="text-xl font-semibold text-spdm-green mb-4">Update User Balance</h2>
+            <div className="space-y-4">
+              <Input
+                placeholder="User ID"
+                className="bg-spdm-gray border-spdm-green/20"
+                value={updateUserId}
+                onChange={(e) => setUpdateUserId(e.target.value)}
+              />
+              <Input
+                placeholder="Amount"
+                type="number"
+                className="bg-spdm-gray border-spdm-green/20"
+                value={updateAmount}
+                onChange={(e) => setUpdateAmount(e.target.value)}
+              />
+              <Button onClick={handleUpdateBalance} disabled={updatingBalance}>
+                {updatingBalance ? "Updating..." : "Update Balance"}
+              </Button>
+            </div>
+          </div>
+          
+          <div className="bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+            <h2 className="text-xl font-semibold text-spdm-green mb-4">Admin Actions</h2>
+            <div>
+              {/* Add any additional admin actions here */}
+              <p className="text-gray-400">More admin actions can be added here.</p>
+            </div>
+          </div>
         </div>
       </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-spdm-black text-white">
-      <Header />
-      
-      <div className="pt-24 pb-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <motion.h1 
-            className="text-2xl md:text-3xl font-bold mb-6 text-spdm-green glow-text"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            Admin Panel
-          </motion.h1>
-          
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-spdm-green"></div>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              <motion.div
-                className="bg-spdm-gray border border-spdm-green/30 rounded-lg p-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                <h2 className="text-xl font-semibold mb-4 text-white">Manage Users</h2>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead className="border-b border-spdm-green/30">
-                      <tr>
-                        <th className="px-4 py-3 text-spdm-green">Username</th>
-                        <th className="px-4 py-3 text-spdm-green">Email</th>
-                        <th className="px-4 py-3 text-spdm-green">Balance</th>
-                        <th className="px-4 py-3 text-spdm-green">Admin</th>
-                        {user.isOwner && (
-                          <th className="px-4 py-3 text-spdm-green">Owner</th>
-                        )}
-                        <th className="px-4 py-3 text-spdm-green">Actions</th>
-                      </tr>
-                    </thead>
-                    <motion.tbody
-                      variants={containerVariants}
-                      initial="hidden"
-                      animate="visible"
-                    >
-                      {users.map((userItem) => (
-                        <motion.tr 
-                          key={userItem.id} 
-                          className="border-b border-spdm-green/10 hover:bg-spdm-green/5 transition-colors"
-                          variants={itemVariants}
-                        >
-                          <td className="px-4 py-3">{userItem.username}</td>
-                          <td className="px-4 py-3">{userItem.email}</td>
-                          <td className="px-4 py-3">{userItem.balance} coins</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs ${userItem.is_admin ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                              {userItem.is_admin ? 'Yes' : 'No'}
-                            </span>
-                          </td>
-                          {user.isOwner && (
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${userItem.is_owner ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                                {userItem.is_owner ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                          )}
-                          <td className="px-4 py-3">
-                            <div className="flex space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="border-spdm-green/30 hover:bg-spdm-green/10 text-spdm-green"
-                                onClick={() => setSelectedUser(userItem.id)}
-                              >
-                                Add Coins
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className={userItem.is_admin 
-                                  ? "border-red-500/30 hover:bg-red-500/10 text-red-400"
-                                  : "border-green-500/30 hover:bg-green-500/10 text-green-400"
-                                }
-                                onClick={() => toggleAdminStatus(userItem.id, userItem.is_admin)}
-                              >
-                                {userItem.is_admin ? 'Remove Admin' : 'Make Admin'}
-                              </Button>
-                              {user.isOwner && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className={userItem.is_owner 
-                                    ? "border-purple-500/30 hover:bg-purple-500/10 text-purple-400"
-                                    : "border-blue-500/30 hover:bg-blue-500/10 text-blue-400"
-                                  }
-                                  onClick={() => toggleOwnerStatus(userItem.id, userItem.is_owner)}
-                                >
-                                  {userItem.is_owner ? 'Remove Owner' : 'Make Owner'}
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </motion.tbody>
-                  </table>
-                </div>
-              </motion.div>
-              
-              {selectedUser && (
-                <motion.div
-                  className="bg-spdm-gray border border-spdm-green/30 rounded-lg p-6"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                >
-                  <h2 className="text-xl font-semibold mb-4 text-white">
-                    Add Coins to {users.find(u => u.id === selectedUser)?.username}
-                  </h2>
-                  
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <Input
-                        type="number"
-                        placeholder="Enter amount"
-                        value={coinAmount || ''}
-                        onChange={(e) => setCoinAmount(parseInt(e.target.value) || 0)}
-                        className="bg-spdm-dark text-white border-spdm-green/30"
-                      />
-                    </div>
-                    <Button 
-                      onClick={handleAddCoins}
-                      className="bg-spdm-green hover:bg-spdm-darkGreen text-black font-medium"
-                      disabled={coinAmount === 0}
-                    >
-                      Add Coins
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setSelectedUser(null)}
-                      className="border-spdm-green/30 hover:bg-spdm-green/10 text-spdm-green"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          )}
+    <>
+      {user?.isAdmin || user?.isOwner ? (
+        
+      ) : (
+        <div className="flex justify-center items-center h-screen">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-spdm-green">Unauthorized</h1>
+            <p className="text-gray-400">You do not have permission to view this page.</p>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 };
 

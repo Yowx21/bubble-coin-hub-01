@@ -23,20 +23,43 @@ export function useCoins({ dailyLimit = 15 }: UseCoinsProps = {}) {
       return false;
     }
     
+    // If amount is 0, this is just a balance refresh request
+    if (amount === 0 && source === "refresh") {
+      try {
+        await updateUserCoins(0);
+        return true;
+      } catch (error) {
+        console.error("Error refreshing coins balance:", error);
+        return false;
+      }
+    }
+    
     setLoading(true);
     
     try {
       // Convert to integer
       const intAmount = Math.round(amount);
       
+      if (intAmount <= 0) {
+        toast({
+          title: "Error",
+          description: "Coin amount must be positive",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
       // Call API to update user's coin balance
       await updateUserCoins(intAmount);
       
-      toast({
-        title: "Success!",
-        description: `You earned ${intAmount} coins from ${source}!`,
-        variant: "default",
-      });
+      // Only show toast for actual coin earnings, not refreshes
+      if (intAmount > 0) {
+        toast({
+          title: "Success!",
+          description: `You earned ${intAmount} coins from ${source}!`,
+          variant: "default",
+        });
+      }
       
       return true;
     } catch (error) {

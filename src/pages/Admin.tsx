@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -200,171 +201,173 @@ const Admin = () => {
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
-      {/* Admin Dashboard Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-spdm-green mb-8">Admin Dashboard</h1>
+  // Render the admin dashboard content
+  const renderAdminDashboard = () => (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-spdm-green mb-8">Admin Dashboard</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-1 bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
-            <h2 className="text-xl font-semibold text-spdm-green mb-4">Quick Stats</h2>
-            <div className="space-y-4">
-              <div className="bg-spdm-gray p-4 rounded-lg">
-                <div className="text-sm text-gray-400 mb-1">Total Users</div>
-                <div className="text-2xl font-bold">{stats.totalUsers || 0}</div>
-              </div>
-              <div className="bg-spdm-gray p-4 rounded-lg">
-                <div className="text-sm text-gray-400 mb-1">Active Users (24h)</div>
-                <div className="text-2xl font-bold">{stats.activeUsers || 0}</div>
-              </div>
-              <div className="bg-spdm-gray p-4 rounded-lg">
-                <div className="text-sm text-gray-400 mb-1">Total Coins in Circulation</div>
-                <div className="text-2xl font-bold">{stats.totalCoins?.toLocaleString() || 0}</div>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-1 bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+          <h2 className="text-xl font-semibold text-spdm-green mb-4">Quick Stats</h2>
+          <div className="space-y-4">
+            <div className="bg-spdm-gray p-4 rounded-lg">
+              <div className="text-sm text-gray-400 mb-1">Total Users</div>
+              <div className="text-2xl font-bold">{stats.totalUsers || 0}</div>
             </div>
-          </div>
-
-          <div className="lg:col-span-2 bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
-            <h2 className="text-xl font-semibold text-spdm-green mb-4">User Management</h2>
-            <div className="flex justify-between mb-4">
-              <Input 
-                placeholder="Search users..." 
-                className="max-w-xs bg-spdm-gray border-spdm-green/20"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Button onClick={handleRefreshUsers} variant="outline" className="border-spdm-green/30 text-spdm-green">
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+            <div className="bg-spdm-gray p-4 rounded-lg">
+              <div className="text-sm text-gray-400 mb-1">Active Users (24h)</div>
+              <div className="text-2xl font-bold">{stats.activeUsers || 0}</div>
             </div>
-            
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">User ID</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Admin</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4">Loading users...</TableCell>
-                    </TableRow>
-                  ) : currentUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-4">No users found.</TableCell>
-                    </TableRow>
-                  ) : (
-                    currentUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center">
-                            <Button variant="ghost" size="sm" onClick={() => copyToClipboard(user.id)} className="mr-2 h-auto w-auto p-1">
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                            {user.id.substring(0, 8)}...
-                          </div>
-                        </TableCell>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>{user.id}</TableCell>
-                        <TableCell>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className={user.is_admin ? "bg-green-500/20 text-green-500 border-green-500/30 hover:bg-green-500/30" : "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20"}
-                            onClick={() => updateUserRole(user.id, user.is_admin)}
-                          >
-                            {user.is_admin ? <CheckCircle className="h-4 w-4 mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                            {user.is_admin ? 'Admin' : 'User'}
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {/* Add any additional actions here */}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-            
-            <div className="mt-4 flex justify-center">
-              <div className="join">
-                <Button
-                  className="join-item"
-                  disabled={currentPage === 1}
-                  onClick={() => paginate(currentPage - 1)}
-                >
-                  «
-                </Button>
-                {Array.from({ length: Math.ceil(users.length / usersPerPage) }, (_, i) => i + 1).map(number => (
-                  <Button
-                    key={number}
-                    className={`join-item ${currentPage === number ? 'btn-active' : ''}`}
-                    onClick={() => paginate(number)}
-                  >
-                    {number}
-                  </Button>
-                ))}
-                <Button
-                  className="join-item"
-                  disabled={currentPage === Math.ceil(users.length / usersPerPage)}
-                  onClick={() => paginate(currentPage + 1)}
-                >
-                  »
-                </Button>
-              </div>
+            <div className="bg-spdm-gray p-4 rounded-lg">
+              <div className="text-sm text-gray-400 mb-1">Total Coins in Circulation</div>
+              <div className="text-2xl font-bold">{stats.totalCoins?.toLocaleString() || 0}</div>
             </div>
           </div>
         </div>
 
-        {/* Promo Code Manager Section */}
-        <div className="mb-8">
-          <PromoCodeManager />
-        </div>
-
-        {/* Additional Admin Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
-            <h2 className="text-xl font-semibold text-spdm-green mb-4">Update User Balance</h2>
-            <div className="space-y-4">
-              <Input
-                placeholder="User ID"
-                className="bg-spdm-gray border-spdm-green/20"
-                value={updateUserId}
-                onChange={(e) => setUpdateUserId(e.target.value)}
-              />
-              <Input
-                placeholder="Amount"
-                type="number"
-                className="bg-spdm-gray border-spdm-green/20"
-                value={updateAmount}
-                onChange={(e) => setUpdateAmount(e.target.value)}
-              />
-              <Button onClick={handleUpdateBalance} disabled={updatingBalance}>
-                {updatingBalance ? "Updating..." : "Update Balance"}
-              </Button>
-            </div>
+        <div className="lg:col-span-2 bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+          <h2 className="text-xl font-semibold text-spdm-green mb-4">User Management</h2>
+          <div className="flex justify-between mb-4">
+            <Input 
+              placeholder="Search users..." 
+              className="max-w-xs bg-spdm-gray border-spdm-green/20"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Button onClick={handleRefreshUsers} variant="outline" className="border-spdm-green/30 text-spdm-green">
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
           
-          <div className="bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
-            <h2 className="text-xl font-semibold text-spdm-green mb-4">Admin Actions</h2>
-            <div>
-              {/* Add any additional admin actions here */}
-              <p className="text-gray-400">More admin actions can be added here.</p>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">User ID</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Admin</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-4">Loading users...</TableCell>
+                  </TableRow>
+                ) : currentUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-4">No users found.</TableCell>
+                  </TableRow>
+                ) : (
+                  currentUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          <Button variant="ghost" size="sm" onClick={() => copyToClipboard(user.id)} className="mr-2 h-auto w-auto p-1">
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          {user.id.substring(0, 8)}...
+                        </div>
+                      </TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.id}</TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className={user.is_admin ? "bg-green-500/20 text-green-500 border-green-500/30 hover:bg-green-500/30" : "bg-red-500/10 text-red-500 border-red-500/30 hover:bg-red-500/20"}
+                          onClick={() => updateUserRole(user.id, user.is_admin)}
+                        >
+                          {user.is_admin ? <CheckCircle className="h-4 w-4 mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
+                          {user.is_admin ? 'Admin' : 'User'}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        {/* Add any additional actions here */}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          
+          <div className="mt-4 flex justify-center">
+            <div className="join">
+              <Button
+                className="join-item"
+                disabled={currentPage === 1}
+                onClick={() => paginate(currentPage - 1)}
+              >
+                «
+              </Button>
+              {Array.from({ length: Math.ceil(users.length / usersPerPage) }, (_, i) => i + 1).map(number => (
+                <Button
+                  key={number}
+                  className={`join-item ${currentPage === number ? 'btn-active' : ''}`}
+                  onClick={() => paginate(number)}
+                >
+                  {number}
+                </Button>
+              ))}
+              <Button
+                className="join-item"
+                disabled={currentPage === Math.ceil(users.length / usersPerPage)}
+                onClick={() => paginate(currentPage + 1)}
+              >
+                »
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Promo Code Manager Section */}
+      <div className="mb-8">
+        <PromoCodeManager />
+      </div>
+
+      {/* Additional Admin Sections */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+          <h2 className="text-xl font-semibold text-spdm-green mb-4">Update User Balance</h2>
+          <div className="space-y-4">
+            <Input
+              placeholder="User ID"
+              className="bg-spdm-gray border-spdm-green/20"
+              value={updateUserId}
+              onChange={(e) => setUpdateUserId(e.target.value)}
+            />
+            <Input
+              placeholder="Amount"
+              type="number"
+              className="bg-spdm-gray border-spdm-green/20"
+              value={updateAmount}
+              onChange={(e) => setUpdateAmount(e.target.value)}
+            />
+            <Button onClick={handleUpdateBalance} disabled={updatingBalance}>
+              {updatingBalance ? "Updating..." : "Update Balance"}
+            </Button>
+          </div>
+        </div>
+        
+        <div className="bg-spdm-dark p-6 rounded-lg border border-spdm-green/20">
+          <h2 className="text-xl font-semibold text-spdm-green mb-4">Admin Actions</h2>
+          <div>
+            {/* Add any additional admin actions here */}
+            <p className="text-gray-400">More admin actions can be added here.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       {user?.isAdmin || user?.isOwner ? (
-        
+        renderAdminDashboard()
       ) : (
         <div className="flex justify-center items-center h-screen">
           <div className="text-center">
